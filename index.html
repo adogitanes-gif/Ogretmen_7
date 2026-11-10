@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Öğretmen Paneli · 7. Sınıf Oyunları</title>
+
+<style>
+:root{--bg:#0b0a1f;--panel:#16143a;--panel2:#1d1a4a;--line:#2f2a6b;--ink:#f1efff;--ink-soft:#b9b3e6;--paper:#0f0d2b;--gold:#ffc83d;--green:#3ddc97;--red:#ff5a6e;--cyan:#22e4ff;--f-body:system-ui,"Segoe UI",Roboto,sans-serif}
+@media (prefers-color-scheme:light){:root{--bg:#f4f3fb;--panel:#fff;--panel2:#f7f6ff;--line:#d9d5f2;--ink:#1d1a3a;--ink-soft:#5d5885;--paper:#fff;--gold:#c98a00;--green:#12965f;--red:#d6334a;--cyan:#0a86b8}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 var(--f-body)}
+.wrap{max-width:1180px;margin:0 auto;padding:16px}h1{font-size:1.7rem;margin:.2em 0}h2{font-size:1.2rem;margin:.2em 0 .5em}
+.pnl{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:14px 16px;margin:12px 0}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.hint{color:var(--ink-soft);font-size:.9rem;margin:.3em 0}
+.btn{display:inline-flex;align-items:center;gap:6px;border:2px solid var(--line);background:var(--panel2);color:var(--ink);border-radius:12px;padding:8px 12px;font:600 .95rem var(--f-body);cursor:pointer;text-decoration:none}
+.btn:hover{border-color:var(--cyan)}.btn.gold{background:var(--gold);color:#1d1400;border-color:var(--gold)}.btn.sm{padding:4px 9px;font-size:.85rem}.btn.red{border-color:var(--red);color:var(--red)}
+textarea,input,select{background:var(--paper);border:2px solid var(--line);border-radius:10px;padding:8px 10px;color:var(--ink);font:500 .95rem var(--f-body)}
+textarea{width:100%;resize:vertical}.field{display:grid;gap:4px;color:var(--ink-soft);font-size:.9rem}
+table{width:100%;border-collapse:collapse;font-size:.92rem}th,td{padding:8px 6px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{color:var(--ink-soft);font-weight:600;position:sticky;top:0;background:var(--panel)}tr.sel td{background:var(--panel2)}tbody tr{cursor:pointer}
+.tw{overflow:auto;max-height:70vh}.pill{display:inline-block;border-radius:999px;padding:1px 8px;font-weight:700;font-size:.85rem;border:1.5px solid}
+.g{color:var(--green);border-color:var(--green)}.y{color:var(--gold);border-color:var(--gold)}.r{color:var(--red);border-color:var(--red)}.n{color:var(--ink-soft);border-color:var(--line)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px}.card{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.bar{display:grid;grid-template-columns:1fr 90px 64px;gap:8px;align-items:center;font-size:.88rem;margin:3px 0}.bar i{display:block;height:8px;border-radius:4px;background:var(--line)}.bar i b{display:block;height:100%;border-radius:4px}
+ul{margin:.3em 0;padding-left:1.2em}.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--green);color:#002414;padding:10px 16px;border-radius:12px;font-weight:700;z-index:99}
+.ov{position:fixed;inset:0;z-index:50;display:grid;place-items:center;background:rgba(5,4,20,.72);padding:16px}.ov .pnl{max-width:640px;width:100%;max-height:88vh;overflow:auto}
+.cl-ta{width:100%;margin:8px 0}@media (max-width:700px){.hide-s{display:none}}
+</style>
+</head>
+<body>
+
+<div class="wrap" id="app"></div>
+<script src="js/classlink.js"></script>
+<script>
+"use strict";
+/* Teacher panel: reports arrive as links (#r=…) or pasted messages; everything is stored only in this browser. */
+const KEY='t7-class',GK=Object.keys(CL.GAMES);
+const DB=()=>CL.get(KEY,{students:{}}),SAVE=d=>CL.set(KEY,d);
+let sel=null,cls='',q='';
+const app=document.getElementById('app'),H=CL.h;
+const toast=t=>{const d=document.createElement('div');d.className='toast';d.textContent=t;document.body.appendChild(d);setTimeout(()=>d.remove(),3200)};
+const tone=a=>a>=80?'g':a>=60?'y':'r';
+function addReport(code){const o=CL.unpack(code);if(!o||!o.st||!o.g)return null;const d=DB(),k=CL.key(o.st);
+  const s=d.students[k]||(d.students[k]={st:o.st,contact:{},reports:[],notes:[]});s.st=o.st;
+  if(!s.reports.some(r=>r.t===o.t)){s.reports.push({t:o.t,g:o.g});s.reports.sort((a,b)=>a.t-b.t);s.reports=s.reports.slice(-15)}SAVE(d);return o}
+function importText(txt){let n=0,bad=0;const seen=new Set();(String(txt).match(/#r=([A-Za-z0-9_-]+)/g)||[]).forEach(m=>{const c=m.slice(3);if(seen.has(c))return;seen.add(c);addReport(c)?n++:bad++});return {n,bad}}
+function fromHash(){const m=(location.hash||'').match(/^#r=([A-Za-z0-9_-]+)/);if(!m)return;const o=addReport(m[1]);history.replaceState(null,'',location.pathname);
+  if(o){sel=CL.key(o.st);toast(`${CL.full(o.st)} (${o.st.c}) raporu eklendi`)}else toast('Bu bağlantı okunamadı ya da değiştirilmiş.');render()}
+const latest=s=>s.reports[s.reports.length-1];
+function cell(g){if(!g||!g.n)return '<span class="pill n">—</span>';const a=CL.pct(g.ok,g.n);return `<span class="pill ${tone(a)}">%${a}</span> <span class="hint">${g.done}/${g.less}</span>`}
+function students(){const d=DB();return Object.entries(d.students).filter(([k,s])=>(!cls||s.st.c===cls)&&(!q||CL.full(s.st).toLocaleLowerCase('tr').includes(q))).sort((a,b)=>a[1].st.c.localeCompare(b[1].st.c,'tr')||a[1].st.s.localeCompare(b[1].st.s,'tr')||a[1].st.n.localeCompare(b[1].st.n,'tr'))}
+function render(){const d=DB(),all=Object.values(d.students),classes=[...new Set(all.map(s=>s.st.c))].sort();const list=students();
+  app.innerHTML=`<h1>👩‍🏫 Öğretmen Paneli</h1><p class="hint">7. sınıf oyunları: Matematik, Fen Bilimleri, Peygamberimizin Hayatı, English. Öğrenciler oyunda "Öğretmenime gönder"e basar; gelen bağlantıyı açtığınızda ya da mesajları aşağıya yapıştırdığınızda rapor buraya eklenir.</p>
+  <section class="pnl"><h2>📥 Rapor ekle</h2><textarea id="paste" rows="3" placeholder="WhatsApp / BiP / e-postadan gelen bir ya da birçok rapor mesajını buraya yapıştırın"></textarea>
+    <div class="row"><button class="btn gold" id="imp" type="button">Raporları ekle</button><span class="hint">Gelen bağlantıya dokunmak da raporu doğrudan ekler.</span></div></section>
+  <section class="pnl"><div class="row" style="justify-content:space-between"><h2>📋 Sınıf listesi (${list.length} öğrenci)</h2>
+    <div class="row"><select id="cls"><option value="">Tüm sınıflar</option>${classes.map(c=>`<option${c===cls?' selected':''}>${H(c)}</option>`).join('')}</select><input id="q" placeholder="Öğrenci ara" value="${H(q)}"></div></div>
+    ${list.length?`<div class="tw"><table><thead><tr><th>Öğrenci</th><th>Sınıf</th><th>Son rapor</th>${GK.map(k=>`<th class="hide-s">${H(CL.GAMES[k].tr)}</th>`).join('')}<th>Son 7 gün</th></tr></thead><tbody>
+    ${list.map(([k,s])=>{const r=latest(s),age=r?(Date.now()-r.t)/864e5:99,wk=GK.map(g=>r&&r.g[g]&&r.g[g].wk).filter(Boolean),wn=wk.reduce((a,x)=>a+x.n,0),wd=Math.max(0,...wk.map(x=>x.days||0));
+      return `<tr data-k="${H(k)}"${k===sel?' class="sel"':''}><td><b>${H(CL.full(s.st))}</b></td><td>${H(s.st.c)}</td><td>${r?CL.date(r.t):'—'}${age>7?' <span class="pill r">eski</span>':''}</td>${GK.map(g=>`<td class="hide-s">${cell(r&&r.g[g])}</td>`).join('')}<td>${wd} gün · ${wn} soru</td></tr>`}).join('')}</tbody></table></div>`:'<p class="hint">Henüz rapor yok. Öğrencilerden oyunlarda "📤 Öğretmenime gönder" düğmesine basmalarını isteyin.</p>'}
+  </section>
+  ${sel&&d.students[sel]?detail(sel,d.students[sel]):''}
+  ${all.length?overview(list.map(x=>x[1])):''}
+  <section class="pnl"><h2>🗂️ Kayıt ve gizlilik</h2><p class="hint">Bütün veriler yalnızca bu cihazdaki bu tarayıcıda saklanır; hiçbir sunucuya gönderilmez. Cihaz değiştirmeden önce yedek alın. Okul ve KVKK kuralları gereği, artık gerekmeyen öğrenci kayıtlarını silin.</p>
+    <div class="row"><button class="btn" id="csv" type="button">⬇️ Excel için CSV</button><button class="btn" id="bak" type="button">💾 Yedeği indir</button><label class="btn">♻️ Yedeği yükle<input id="res" type="file" accept=".json" hidden></label><button class="btn red" id="wipe" type="button">🗑 Tüm verileri sil</button></div></section>`;
+  wire()}
+function bars(units){return (units||[]).filter(u=>u[3]).map(u=>{const a=CL.pct(u[2],u[3]);return `<div class="bar"><span>${H(u[0]+'. '+u[1])}</span><i><b style="width:${a}%;background:var(--${a>=80?'green':a>=60?'gold':'red'})"></b></i><span class="hint">%${a} · ${u[3]}</span></div>`}).join('')||'<p class="hint">Bu oyunda henüz cevap yok.</p>'}
+function detail(k,s){const r=latest(s),c=s.contact||{};
+  const hist=s.reports.map(x=>{const t=GK.reduce((a,g)=>a+((x.g[g]||{}).n||0),0),ok=GK.reduce((a,g)=>a+((x.g[g]||{}).ok||0),0);return `<li>${CL.date(x.t)}: ${t} cevap, %${CL.pct(ok,t)} doğru</li>`}).reverse().join('');
+  return `<section class="pnl" id="det"><div class="row" style="justify-content:space-between"><h2>🧑‍🎓 ${H(CL.full(s.st))} · ${H(s.st.c)}</h2>
+    <div class="row"><button class="btn gold" id="msg" type="button">💬 Öğrenciye mesaj</button><button class="btn gold" id="par" type="button">👨‍👩‍👧 Veli mesajı</button><button class="btn red sm" id="del" type="button">Sil</button></div></div>
+    <div class="row" style="margin:6px 0 10px"><label class="field">Babanın telefonu<input id="phf" inputmode="tel" placeholder="05xx xxx xx xx" value="${H(c.father||c.phone||'')}"></label><label class="field">Annenin telefonu<input id="phm" inputmode="tel" placeholder="05xx xxx xx xx" value="${H(c.mother||'')}"></label><label class="field">Veli e-postası (isteğe bağlı)<input id="em" type="email" value="${H(c.email||'')}"></label><button class="btn sm" id="csave" type="button">Kaydet</button></div>
+    <div class="grid">${GK.map(g=>{const x=r&&r.g[g];if(!x||!x.n)return `<div class="card"><b>${H(CL.GAMES[g].name)}</b><p class="hint">Bu oyundan henüz rapor yok.</p></div>`;
+      return `<div class="card"><b>${H(CL.GAMES[g].name)}</b><p class="hint">${x.done}/${x.less} ders · ${x.n} cevap · %${CL.pct(x.ok,x.n)} doğru${x.streak?` · ${x.streak} gün seri`:''} · son 7 gün ${x.wk.days} gün</p>${bars(x.units)}
+        ${x.weak&&x.weak.length?`<p style="margin:.5em 0 0"><b>Zayıf dersler</b></p><ul>${x.weak.map(t=>`<li>${H(t)}</li>`).join('')}</ul>`:''}
+        ${x.mis&&x.mis.length?`<p style="margin:.5em 0 0"><b>Sık hatalar</b></p><ul>${x.mis.map(m=>`<li>${H(m[0])} · ${m[1]} kez</li>`).join('')}</ul>`:''}</div>`}).join('')}</div>
+    <p style="margin:.8em 0 .2em"><b>Rapor geçmişi</b></p><ul class="hint">${hist}</ul>
+    ${s.notes&&s.notes.length?`<p style="margin:.8em 0 .2em"><b>Gönderilen mesajlar</b></p><ul class="hint">${s.notes.slice(-5).reverse().map(n=>`<li>${CL.date(n.t)}: ${H(n.m)}</li>`).join('')}</ul>`:''}</section>`}
+function overview(list){const per=GK.map(g=>{const xs=list.map(s=>latest(s)).filter(r=>r&&r.g[g]&&r.g[g].n).map(r=>r.g[g]);if(!xs.length)return '';
+    const acc=Math.round(xs.reduce((a,x)=>a+CL.pct(x.ok,x.n),0)/xs.length),done=Math.round(xs.reduce((a,x)=>a+x.done/x.less*100,0)/xs.length);
+    const mc={};xs.forEach(x=>(x.mis||[]).forEach(m=>mc[m[0]]=(mc[m[0]]||0)+m[1]));const top=Object.entries(mc).sort((a,b)=>b[1]-a[1]).slice(0,3);
+    const wc={};xs.forEach(x=>(x.weak||[]).forEach(t=>wc[t]=(wc[t]||0)+1));const tw=Object.entries(wc).sort((a,b)=>b[1]-a[1]).slice(0,3);
+    return `<div class="card"><b>${H(CL.GAMES[g].name)}</b><p class="hint">${xs.length} öğrenci · ortalama doğruluk <span class="pill ${tone(acc)}">%${acc}</span> · ortalama ilerleme %${done}</p>
+      ${tw.length?`<p style="margin:.4em 0 0"><b>Sınıfça tekrar edilecek dersler</b></p><ul>${tw.map(([t,n])=>`<li>${H(t)} (${n} öğrenci)</li>`).join('')}</ul>`:''}
+      ${top.length?`<p style="margin:.4em 0 0"><b>Sınıfta en sık hatalar</b></p><ul>${top.map(([m,n])=>`<li>${H(m)} · ${n} kez</li>`).join('')}</ul>`:''}</div>`}).join('');
+  const old=list.filter(s=>{const r=latest(s);return !r||Date.now()-r.t>7*864e5});
+  return `<section class="pnl"><h2>📈 Sınıf özeti${cls?' · '+H(cls):''}</h2><div class="grid">${per}</div>
+    ${old.length?`<p style="margin:.8em 0 .2em"><b>7 günden uzun süredir rapor göndermeyenler</b></p><p class="hint">${old.map(s=>H(CL.full(s.st))+' ('+H(s.st.c)+')').join(', ')}</p>`:''}</section>`}
+function wire(){const $=id=>document.getElementById(id);
+  $('imp').onclick=()=>{const r=importText($('paste').value);toast(r.n?`${r.n} rapor eklendi${r.bad?`, ${r.bad} okunamadı`:''}`:'Yapıştırılan metinde rapor bağlantısı bulunamadı.');render()};
+  $('cls').onchange=e=>{cls=e.target.value;render()};$('q').oninput=e=>{q=e.target.value.toLocaleLowerCase('tr');const p=e.target.selectionStart;render();const n=$('q');n.focus();n.setSelectionRange(p,p)};
+  document.querySelectorAll('tbody tr[data-k]').forEach(tr=>tr.onclick=()=>{sel=tr.dataset.k;render();document.getElementById('det').scrollIntoView({behavior:'smooth'})});
+  if($('det')){const d=DB(),s=d.students[sel];
+    $('csave').onclick=()=>{const d2=DB();const f=$('phf').value.trim(),m=$('phm').value.trim(),e=$('em').value.trim();if(!CL.okPhone(f)||!CL.okPhone(m)||!CL.okMail(e)){toast('Telefon (05xx xxx xx xx) ya da e-posta hatalı.');return}d2.students[sel].contact={father:f,mother:m,email:e};SAVE(d2);toast('Veli bilgisi kaydedildi (yalnızca bu cihazda).')};
+    $('del').onclick=()=>{if(confirm(`${CL.full(s.st)} öğrencisinin tüm kayıtları silinsin mi?`)){const d2=DB();delete d2.students[sel];SAVE(d2);sel=null;render()}};
+    $('msg').onclick=()=>studentMsg(DB().students[sel]);$('par').onclick=()=>parentMsg(DB().students[sel])}
+  $('csv').onclick=()=>{const rows=[['Ad','Soyad','Sınıf','Son rapor',...GK.flatMap(g=>[CL.GAMES[g].tr+' ders',CL.GAMES[g].tr+' doğruluk %']),'Son 7 gün (gün)','Son 7 gün (soru)']];
+    students().forEach(([k,s])=>{const r=latest(s),wk=GK.map(g=>r&&r.g[g]&&r.g[g].wk).filter(Boolean);rows.push([s.st.n,s.st.s,s.st.c,r?CL.date(r.t):'',...GK.flatMap(g=>{const x=r&&r.g[g];return x&&x.n?[`${x.done}/${x.less}`,CL.pct(x.ok,x.n)]:['','']}),Math.max(0,...wk.map(x=>x.days||0)),wk.reduce((a,x)=>a+x.n,0)])});
+    dl('sinif-raporu.csv','﻿'+rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(';')).join('\r\n'),'text/csv')};
+  $('bak').onclick=()=>dl(`ogretmen-paneli-yedek-${new Date().toISOString().slice(0,10)}.json`,JSON.stringify(DB()),'application/json');
+  $('res').onchange=e=>{const f=e.target.files[0];if(!f)return;f.text().then(t=>{try{const o=JSON.parse(t);if(!o.students)throw 0;const d=DB();Object.assign(d.students,o.students);SAVE(d);toast('Yedek yüklendi.');render()}catch(_){toast('Bu dosya bir panel yedeği değil.')}})};
+  $('wipe').onclick=()=>{if(confirm('Paneldeki TÜM öğrenci kayıtları silinsin mi? Bu geri alınamaz.')){SAVE({students:{}});sel=null;render()}}}
+/* parent contact on the teacher's side: father, mother, e-mail (an earlier single phone counts as the father's) */
+const pc=s=>{const c=s.contact||{};return {father:c.father||c.phone||'',mother:c.mother||'',email:c.email||''}};
+function dl(name,text,type){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type}));a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000)}
+function studentMsg(s){const r=latest(s),games=r?Object.keys(r.g).filter(g=>r.g[g]&&r.g[g].n):[];const best=games.sort((a,b)=>(r.g[b].last||0)-(r.g[a].last||0))[0]||'m7';
+  const weak=r?GK.flatMap(g=>((r.g[g]||{}).weak||[]).slice(0,1).map(t=>`${CL.GAMES[g].tr}: ${t}`)):[];
+  const ov=document.createElement('div');ov.className='ov';ov.innerHTML=`<div class="pnl"><h2>💬 ${H(CL.full(s.st))} için mesaj</h2>
+    <p class="hint">Öğrenci bağlantıyı açınca mesajınız oyunun ana sayfasında görünür (dört oyunun hepsinde).</p>
+    <div class="row" style="margin:6px 0">${['Harika gidiyorsun, böyle devam! 🌟','Bu hafta her gün 15 dakika "Bugünün Görevi"ni yap.',...weak.map(w=>`Şu dersi tekrar et: ${w}`)].map(t=>`<button class="btn sm tpl" type="button">${H(t)}</button>`).join('')}</div>
+    <textarea id="mt" rows="4" placeholder="Mesajınızı yazın"></textarea>
+    <label class="field">Bağlantı hangi oyunda açılsın?<select id="mg">${GK.map(g=>`<option value="${g}"${g===best?' selected':''}>${H(CL.GAMES[g].name)}</option>`).join('')}</select></label>
+    <div class="row" style="margin-top:10px"><button class="btn gold" id="mk" type="button">Mesajı hazırla</button><button class="btn" id="mx" type="button">Vazgeç</button></div></div>`;
+  document.body.appendChild(ov);const $=id=>ov.querySelector('#'+id);ov.querySelectorAll('.tpl').forEach(b=>b.onclick=()=>{$('mt').value=($('mt').value?$('mt').value+'\n':'')+b.textContent});
+  $('mx').onclick=()=>ov.remove();
+  $('mk').onclick=()=>{const m=$('mt').value.trim();if(!m){$('mt').focus();return}const g=$('mg').value,t=Date.now(),code=CL.pack({to:s.st,m,t,g});
+    const d=DB();(d.students[CL.key(s.st)].notes||(d.students[CL.key(s.st)].notes=[])).push({t,m});SAVE(d);ov.remove();
+    CL.share({title:'Öğrenciye gönder',intro:'Bu mesajı öğrenciye (ya da velisine) WhatsApp, BiP veya e-posta ile gönderin.',rows:7,phones:CL.phones(pc(s)),email:pc(s).email,
+      text:`Merhaba ${s.st.n}, öğretmeninden bir mesaj var. Görmek için bu bağlantıya dokun:\n${CL.GAMES[g].url}#not=${code}`,subject:`Öğretmeninden mesaj – ${CL.full(s.st)}`})}}
+function parentMsg(s){const r=latest(s);if(!r){toast('Bu öğrenciden henüz rapor yok.');return}
+  const note=prompt('Velinin göreceği kısa bir not eklemek ister misiniz? (boş bırakabilirsiniz)','')||'';
+  CL.share({title:'Veli mesajı',intro:'Göndermeden önce metni değiştirebilirsiniz.',edit:true,rows:15,phones:CL.phones(pc(s)),email:pc(s).email,
+    text:CL.parentMessage(s.st,r.g,{date:CL.date(r.t),note:note.trim()}),subject:`${CL.full(s.st)} (${s.st.c}) – ilerleme özeti`})}
+window.addEventListener('hashchange',fromHash);render();fromHash();
+</script>
+
+</body>
+</html>
