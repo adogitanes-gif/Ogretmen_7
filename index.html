@@ -519,7 +519,8 @@ async function classObj2(cid,extra){const d=DB(),m=d.me,x=d.classes[cid],k=await
   const co={tid:m.tid,n:m.n,pub:k.pub,...(per&&m.share!==false&&m.ph?{ph:m.ph}:{}),...(per&&m.share!==false&&m.em?{em:m.em}:{})};
   const o={k:'cls2',cid,c:x.c,v:x.v,t:x.t,co,seats,...(x.ds?{ds:x.ds}:{}),...(d.nkUntil&&Date.now()<d.nkUntil?{nk:1}:{}),...(extra||{})};o.sig=await CL.signObj(k.priv,o);return o}
 function classUrl2(o){const g=[...GK.filter(x=>x!=='e7'),'e7'].find(x=>o.seats.some(z=>z[0]===x))||GK[0];return CL.GAMES[g].url+'#k='+CL.enc2(o)}
-const LEGACY_UNTIL=new Date('2026-12-31T23:59:59').getTime(),legacyOn=()=>Date.now()<LEGACY_UNTIL;
+/* the long "Eski oyunlar için" link was a transition aid; switched off by the coordinator on 2026-11-12 (games update on their next open) */
+const LEGACY_UNTIL=0,legacyOn=()=>false;
 function classUrl(o){const g=[...GK.filter(x=>x!=='e7'),'e7'].find(x=>o.seats.some(z=>z[0]===x))||GK[0];return CL.GAMES[g].url+'#sinif='+CL.pack(o)}
 async function shareClass(cid,s,onSend){let o,old='';try{o=await classObj2(cid);if(legacyOn())old=classUrl(await classObj(cid))}catch(e){toast('Bu tarayıcı imza atamıyor. Paneli internet adresinden Chrome ya da Edge ile açın.');return}
   const d=DB(),m=d.me,x=d.classes[cid],link=classUrl2(o);
